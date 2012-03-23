@@ -448,6 +448,9 @@ GdkDragAction fm_dnd_dest_get_default_action(FmDndDest* dd,
                                              GdkDragContext* drag_context,
                                              GdkTarget target)
 {
+    GFile* gdest = NULL;
+    GFileInfo * gfileinfo = NULL;
+
     GdkDragAction action;
     FmFileInfo* dest = dd->dest_file;
 
@@ -487,6 +490,14 @@ GdkDragAction fm_dnd_dest_get_default_action(FmDndDest* dd,
         }
         else /* dest is a ordinary path */
         {
+            GFile* gdest = fm_path_to_gfile(dest_path);
+            GFileInfo * gfileinfo = g_file_query_info(gdest, "standard::*", G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL, NULL);
+            if (!gfileinfo || g_file_info_get_file_type(gfileinfo) != G_FILE_TYPE_DIRECTORY)
+            {
+                action = 0;
+                goto out;
+            }
+
             /* determine if the dragged files are on the same device as destination file */
             /* Here we only check the first dragged file since checking all of them can
              * make the operation very slow. */
@@ -507,6 +518,14 @@ GdkDragAction fm_dnd_dest_get_default_action(FmDndDest* dd,
 
     if( action && 0 == (drag_context->actions & action) )
         action = drag_context->suggested_action;
+
+out:
+
+    if (gdest)
+        g_object_unref(G_OBJECT(gdest));
+
+    if (gfileinfo)
+        g_object_unref(G_OBJECT(gfileinfo));
 
     return action;
 }

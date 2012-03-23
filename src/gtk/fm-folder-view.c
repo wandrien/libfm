@@ -458,7 +458,9 @@ static gboolean on_drag_motion(GtkWidget *dest_widget,
         action = fm_dnd_dest_get_default_action(fv->dnd_dest, drag_context, target);
         ret = action != 0;
     }
-    gdk_drag_status(drag_context, action, time);
+
+    if (action)
+        gdk_drag_status(drag_context, action, time);
 
     return ret;
 }
