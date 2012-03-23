@@ -475,7 +475,7 @@ void fm_folder_model_get_value(GtkTreeModel *tree_model,
             {
                 if(fm_file_info_can_thumbnail(item->inf))
                 {
-                    if(item->inf->size > 0 && item->inf->size <= (fm_config->thumbnail_max << 10))
+                    if(item->inf->size > 0 && (fm_config->thumbnail_max == 0 || item->inf->size <= (fm_config->thumbnail_max << 10)))
                     {
                         FmThumbnailRequest* req = fm_thumbnail_request(item->inf, model->icon_size, on_thumbnail_loaded, model);
                         model->thumbnail_requests = g_list_prepend(model->thumbnail_requests, req);

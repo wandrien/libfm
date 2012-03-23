@@ -844,7 +844,7 @@ void generate_thumbnails_with_gdk_pixbuf(ThumbnailTask* task)
     GdkPixbuf* normal_pix = NULL;
     GdkPixbuf* large_pix = NULL;
 
-    DEBUG("generate thumbnail for %s", task->fi->path->name);
+    DEBUG("generate thumbnail for %s - type: %s", task->fi->path->name, task->fi->type->type);
 
     if( ins = g_file_read(gf, generator_cancellable, NULL) )
     {
@@ -929,11 +929,92 @@ void generate_thumbnails_with_gdk_pixbuf(ThumbnailTask* task)
 
 void generate_thumbnails_with_thumbnailers(ThumbnailTask* task)
 {
-    /* TODO: external thumbnailer support */
-    DEBUG("external thumbnailer is needed for %s", task->fi->disp_name);
+    char *cmd;
+    GdkPixbuf* normal_pix = NULL;
+    GdkPixbuf* large_pix = NULL;
+    GFileInputStream* ins;
+    GFile *path;
+
+    DEBUG("calling external thumbnailer for %s - type: %s",
+            task->fi->disp_name, task->fi->type->type);
+
+    if(task->flags & GENERATE_NORMAL) {
+        /* process video */
+        if (!strncmp ("video/", task->fi->type->type, 6)) {
+            cmd = g_strdup_printf ("ffmpegthumbnailer -f -i \"%s\" -s 128 -o \"%s\" &>/dev/null",
+                    fm_path_display_name (task->fi->path, TRUE), task->normal_path);
+        /* process pdf */
+        } else if (!strcmp ("application/pdf", task->fi->type->type)) {
+            cmd = g_strdup_printf ("pdftoppm -scale-to 128 -f 1 -l 1 -png \"%s\" > \"%s\" 2>/dev/null" ,
+                    fm_path_display_name (task->fi->path, TRUE), task->normal_path);
+        /* process epub (search for the largest jp*g in epub and use it as thumbnail) */
+        } else if (!strcmp ("application/epub+zip", task->fi->type->type)) {
+            cmd = g_strdup_printf ("unzip -l \"%s\" | grep 'jpe*g' | sort -n | tail -n 1 | "
+                    "sed -r 's/.*\\///' | while read line; do unzip -p \"%s\" '*'$line ; done | "
+                    "convert jpg:- -thumbnail x128 \"%s\" &>/dev/null" ,
+                    fm_path_display_name (task->fi->path, TRUE),
+                    fm_path_display_name (task->fi->path, TRUE),
+                    task->normal_path);
+        }
+
+        if (cmd) {
+            DEBUG ("executing: %s\n", cmd);
+            if (!system (cmd)) {
+                path = g_file_new_for_path (task->normal_path);
+                if (ins = g_file_read(path, generator_cancellable, NULL)) {
+                    normal_pix = gdk_pixbuf_new_from_stream(G_INPUT_STREAM(ins), generator_cancellable, NULL);
+                    g_input_stream_close(G_INPUT_STREAM(ins), NULL, NULL);
+                    /* save it again, to have the tEXt info available */
+                    save_thumbnail_to_disk (task, normal_pix, task->normal_path);
+                }
+                g_object_unref (path);
+            }
+            g_free (cmd);
+        }
+    }
+    if(task->flags & GENERATE_LARGE) {
+        /* process video */
+        if (!strncmp ("video/", task->fi->type->type, 6)) {
+            cmd = g_strdup_printf ("ffmpegthumbnailer -f -i \"%s\" -s 256 -o \"%s\" &>/dev/null",
+                    fm_path_display_name (task->fi->path, TRUE), task->large_path);
+        /* process pdf */
+        } else if (!strcmp ("application/pdf", task->fi->type->type)) {
+            cmd = g_strdup_printf ("pdftoppm -scale-to 256 -f 1 -l 1 -png \"%s\" > \"%s\" 2>/dev/null" ,
+                    fm_path_display_name (task->fi->path, TRUE), task->large_path);
+        /* process epub (search for the largest jp*g in epub and use it as thumbnail) */
+        } else if (!strcmp ("application/epub+zip", task->fi->type->type)) {
+            cmd = g_strdup_printf ("unzip -l \"%s\" | grep 'jpe*g' | sort -n | tail -n 1 | "
+                    "sed -r 's/.*\\///' | while read line; do unzip -p \"%s\" '*'$line ; done | "
+                    "convert jpg:- -thumbnail x256 \"%s\" &>/dev/null" ,
+                    fm_path_display_name (task->fi->path, TRUE),
+                    fm_path_display_name (task->fi->path, TRUE),
+                    task->large_path);
+        }
+
+        if (cmd) {
+            DEBUG ("executing: %s\n", cmd);
+            if (!system (cmd)) {
+                path = g_file_new_for_path (task->large_path);
+                if (ins = g_file_read(path, generator_cancellable, NULL)) {
+                    large_pix = gdk_pixbuf_new_from_stream(G_INPUT_STREAM(ins), generator_cancellable, NULL);
+                    g_input_stream_close(G_INPUT_STREAM(ins), NULL, NULL);
+                    /* save it again, to have the tEXt info available */
+                    save_thumbnail_to_disk (task, large_pix, task->large_path);
+                }
+                g_object_unref (path);
+            }
+            g_free (cmd);
+        }
+    }
+
 
     G_LOCK(queue);
-    thumbnail_task_finish(task, NULL, NULL);
+    thumbnail_task_finish(task, normal_pix, large_pix);
     cur_generating = NULL;
     G_UNLOCK(queue);
+
+    if(normal_pix)
+        g_object_unref(normal_pix);
+    if(large_pix)
+        g_object_unref(large_pix);
 }
