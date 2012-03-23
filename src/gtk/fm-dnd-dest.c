@@ -164,10 +164,22 @@ gboolean fm_dnd_dest_files_dropped(FmDndDest* dd, int x, int y, GdkDragAction ac
     // Check if source and destination are the same
     src = (FmPath*) fm_list_peek_head(files);
     src = fm_path_get_parent (src);
-    if(fm_path_equal (src ,dest)) 
+    if(fm_path_equal(src, dest)) 
     {
         fm_list_unref(files);
         return FALSE;
+    }
+
+    // Check if destination and one of moved files are the same
+    GList* l;
+    for (l = fm_list_peek_head_link(files); l; l = l->next)
+    {
+        FmPath* path = (FmPath*)l->data;
+        if (fm_path_equal(path, dest)) 
+        {
+            fm_list_unref(files);
+            return FALSE;
+        }
     }
 
     parent = gtk_widget_get_toplevel(dd->widget);
