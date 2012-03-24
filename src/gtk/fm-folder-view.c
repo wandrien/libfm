@@ -327,7 +327,8 @@ static void fm_folder_view_finalize(GObject *object)
 static void set_icon_size(FmFolderView* fv, guint icon_size)
 {
     FmCellRendererPixbuf* render = (FmCellRendererPixbuf*)fv->renderer_pixbuf;
-    fm_cell_renderer_pixbuf_set_fixed_size(render, icon_size, icon_size);
+    if (fv->mode != FM_FV_THUMBNAIL_VIEW)
+        fm_cell_renderer_pixbuf_set_fixed_size(render, icon_size, icon_size);
 
     if(!fv->model)
         return;
@@ -539,7 +540,7 @@ static inline void create_icon_view(FmFolderView* fv, GList* sels)
         {
             fv->icon_size_changed_handler = g_signal_connect(fm_config, "changed::thumbnail_size", G_CALLBACK(on_thumbnail_size_changed), fv);
             icon_size = fm_config->thumbnail_size;
-            fm_cell_renderer_pixbuf_set_fixed_size(FM_CELL_RENDERER_PIXBUF(fv->renderer_pixbuf), icon_size, icon_size);
+            //fm_cell_renderer_pixbuf_set_fixed_size(FM_CELL_RENDERER_PIXBUF(fv->renderer_pixbuf), icon_size, icon_size);
             if(model)
                 fm_folder_model_set_icon_size(model, icon_size);
 
@@ -554,7 +555,8 @@ static inline void create_icon_view(FmFolderView* fv, GList* sels)
                          NULL );
             exo_icon_view_set_column_spacing( (ExoIconView*)fv->view, 8 );
             //exo_icon_view_set_item_width ( (ExoIconView*)fv->view, 200 );
-            exo_icon_view_set_item_width((ExoIconView*)fv->view, 16);
+            exo_icon_view_set_item_width((ExoIconView*)fv->view, 8);
+            exo_icon_view_set_item_height((ExoIconView*)fv->view, 8);
         }
     }
     gtk_cell_layout_pack_start((GtkCellLayout*)fv->view, render, TRUE);

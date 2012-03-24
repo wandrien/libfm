@@ -528,6 +528,7 @@ struct _ExoIconViewPrivate
 
   gint columns;
   gint item_width;
+  gint item_height;
   gint spacing;
   gint row_spacing;
   gint column_spacing;
@@ -1191,6 +1192,7 @@ exo_icon_view_init (ExoIconView *icon_view)
 
   icon_view->priv->columns = -1;
   icon_view->priv->item_width = -1;
+  icon_view->priv->item_height = -1;
   icon_view->priv->row_spacing = 6;
   icon_view->priv->column_spacing = 6;
   icon_view->priv->margin = 6;
@@ -3327,11 +3329,15 @@ exo_icon_view_layout (ExoIconView *icon_view)
   else
     {
       /* calculate item sizes on-demand */
-      for (icons = priv->items, item_height = 0; icons != NULL; icons = icons->next)
+      item_height = priv->item_height;
+      if (item_height < 0)
         {
-          item = icons->data;
-          exo_icon_view_calculate_item_size (icon_view, item);
-          item_height = MAX (item_height, item->area.height);
+          for (icons = priv->items, item_height = 0; icons != NULL; icons = icons->next)
+            {
+              item = icons->data;
+              exo_icon_view_calculate_item_size (icon_view, item);
+              item_height = MAX (item_height, item->area.height);
+            }
         }
 
       rows = exo_icon_view_layout_cols (icon_view, item_height, &x, &maximum_height, 0);
@@ -6033,6 +6039,58 @@ exo_icon_view_set_item_width (ExoIconView *icon_view,
       update_text_cell (icon_view);
 
       g_object_notify (G_OBJECT (icon_view), "item-width");
+    }
+}
+
+
+
+
+/**
+ * exo_icon_view_get_item_height:
+ * @icon_view: a #ExoIconView
+ *
+ * Returns the value of the ::item-height property.
+ *
+ * Return value: the height of a single item, or -1
+ *
+ * Since: XXX
+ */
+gint
+exo_icon_view_get_item_height (const ExoIconView *icon_view)
+{
+  g_return_val_if_fail (EXO_IS_ICON_VIEW (icon_view), -1);
+  return icon_view->priv->item_height;
+}
+
+
+
+/**
+ * exo_icon_view_set_item_width:
+ * @icon_view  : a #ExoIconView
+ * @item_width : the height for each item
+ *
+ * Sets the ::item-height property which specifies the height
+ * to use for each item. If it is set to -1, the icon view will
+ * automatically determine a suitable item size.
+ *
+ * Since: XXX
+ */
+void
+exo_icon_view_set_item_height (ExoIconView *icon_view,
+                              gint         item_height)
+{
+  g_return_if_fail (EXO_IS_ICON_VIEW (icon_view));
+
+  if (icon_view->priv->item_height != item_height)
+    {
+      icon_view->priv->item_height = item_height;
+
+      exo_icon_view_stop_editing (icon_view, TRUE);
+      exo_icon_view_invalidate_sizes (icon_view);
+
+      update_text_cell (icon_view);
+
+      //g_object_notify (G_OBJECT (icon_view), "item-width");
     }
 }
 

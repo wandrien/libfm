@@ -198,6 +198,10 @@ gint                  exo_icon_view_get_item_width            (const ExoIconView
 void                  exo_icon_view_set_item_width            (ExoIconView              *icon_view,
                                                                gint                      item_width);
 
+gint                  exo_icon_view_get_item_height           (const ExoIconView        *icon_view);
+void                  exo_icon_view_set_item_height           (ExoIconView              *icon_view,
+                                                               gint                      item_height);
+
 gint                  exo_icon_view_get_spacing               (const ExoIconView        *icon_view);
 void                  exo_icon_view_set_spacing               (ExoIconView              *icon_view,
                                                                gint                      spacing);
