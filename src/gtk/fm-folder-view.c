@@ -309,6 +309,11 @@ static void fm_folder_view_finalize(GObject *object)
     g_object_unref(self->dnd_src);
     g_object_unref(self->dnd_dest);
 
+    if (self->hinted_column_render)
+    {
+        g_object_unref(G_OBJECT(self->hinted_column_render));
+    }
+
     if(self->cwd)
         fm_path_unref(self->cwd);
 
@@ -476,6 +481,46 @@ static void on_drag_leave(GtkWidget *dest_widget,
     fm_dnd_dest_drag_leave(fv->dnd_dest, drag_context, time);
 }
 
+
+static inline void adjust_hinted_column_renderer(GtkCellLayout* view, GtkCellRenderer* render, FmFolderViewHintType hint, int by)
+{
+    if (!render || !view)
+        return;
+
+    if (hint == FM_FV_HINT_AUTO)
+    {
+        switch (by)
+        {
+            case COL_FILE_NAME: hint = FM_FV_HINT_SIZE; break;
+            case COL_FILE_MTIME: hint = FM_FV_HINT_MTIME; break;
+            case COL_FILE_SIZE: hint = FM_FV_HINT_SIZE; break;
+            case COL_FILE_DESC: hint = FM_FV_HINT_DESC; break;
+            default:
+                 hint = FM_FV_HINT_DESC;
+         }
+    }
+
+    int col = COL_FILE_NAME;
+    switch (hint)
+    {
+        case FM_FV_HINT_NONE: break;
+        case FM_FV_HINT_MTIME: col = COL_FILE_NAME_HINT_MTIME; break;
+        case FM_FV_HINT_SIZE: col = COL_FILE_NAME_HINT_SIZE; break;
+        case FM_FV_HINT_DESC: col = COL_FILE_NAME_HINT_DESC; break;
+    }
+
+    gtk_cell_layout_clear_attributes(view, render);
+
+    if (col == COL_FILE_NAME)
+    {
+        gtk_cell_layout_add_attribute(view, render, "text", col);
+    }
+    else
+    {
+        gtk_cell_layout_add_attribute(view, render, "markup", col );
+    }
+}
+
 static inline void create_icon_view(FmFolderView* fv, GList* sels)
 {
     GtkTreeViewColumn* col;
@@ -503,16 +548,25 @@ static inline void create_icon_view(FmFolderView* fv, GList* sels)
         if(model)
             fm_folder_model_set_icon_size(model, icon_size);
 
-        render = fm_cell_renderer_text_new();
+        if (fv->hinted_column_render)
+        {
+            g_object_unref(G_OBJECT(fv->hinted_column_render));
+            fv->hinted_column_render = NULL;
+        }
+
+        fv->hinted_column_render = render = fm_cell_renderer_text_new();
         //render = gtk_cell_renderer_text_new();
+
+        g_object_ref(G_OBJECT(fv->hinted_column_render));
+
         g_object_set((GObject*)render,
                      "xalign", 1.0, /* FIXME: why this needs to be 1.0? */
                      "yalign", 0.5,
                      NULL );
 
         gtk_cell_layout_pack_start((GtkCellLayout*)fv->view, render, TRUE);
-        //gtk_cell_layout_add_attribute((GtkCellLayout*)fv->view, render, "text", COL_EXTENDED_FILE_NAME);
-        gtk_cell_layout_add_attribute((GtkCellLayout*)fv->view, render, "markup", COL_EXTENDED_FILE_NAME );
+        
+        adjust_hinted_column_renderer((GtkCellLayout*)fv->view, render, fv->hint, fv->sort_by);
 
         exo_icon_view_set_layout_mode( (ExoIconView*)fv->view,
             fv->mode == FM_FV_VERTICAL_COMPACT_VIEW ? EXO_ICON_VIEW_LAYOUT_ROWS : EXO_ICON_VIEW_LAYOUT_COLS);
@@ -662,12 +716,18 @@ static inline void create_list_view(FmFolderView* fv, GList* sels)
 
 void fm_folder_view_set_mode(FmFolderView* fv, FmFolderViewMode mode)
 {
-    if( mode != fv->mode )
+    if( mode != fv->mode)
     {
         GtkTreeSelection* ts;
         GList *sels, *cells;
         FmFolderModel* model = (FmFolderModel*)fv->model;
         gboolean has_focus;
+
+        if (fv->hinted_column_render)
+        {
+            g_object_unref(G_OBJECT(fv->hinted_column_render));
+            fv->hinted_column_render = NULL;
+        }
 
         if( G_LIKELY(fv->view) )
         {
@@ -750,6 +810,20 @@ FmFolderViewMode fm_folder_view_get_mode(FmFolderView* fv)
     return fv->mode;
 }
 
+void fm_folder_view_set_hint_type(FmFolderView* fv, FmFolderViewHintType hint)
+{
+    if( hint != fv->hint )
+    {
+        fv->hint = hint;
+        adjust_hinted_column_renderer((GtkCellLayout*)fv->view, fv->hinted_column_render, fv->hint, fv->sort_by);
+    }
+}
+
+FmFolderViewHintType fm_folder_view_get_hint_type(FmFolderView* fv)
+{
+    return fv->hint;
+}
+
 void fm_folder_view_set_selection_mode(FmFolderView* fv, GtkSelectionMode mode)
 {
     if(fv->sel_mode != mode)
@@ -788,6 +862,8 @@ void fm_folder_view_sort(FmFolderView* fv, GtkSortType type, int by)
     if(fv->model)
         gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(fv->model),
                                              fv->sort_by, fv->sort_type);
+    if (fv->hint == FM_FV_HINT_AUTO)
+        adjust_hinted_column_renderer((GtkCellLayout*)fv->view, fv->hinted_column_render, fv->hint, fv->sort_by);
 }
 
 GtkSortType fm_folder_view_get_sort_type(FmFolderView* fv)

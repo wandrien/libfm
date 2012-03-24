@@ -53,7 +53,19 @@ enum _FmFolderViewMode
 };
 typedef enum _FmFolderViewMode FmFolderViewMode;
 
-#define FM_FOLDER_VIEW_MODE_IS_VALID(mode)  (mode >= FM_FV_ICON_VIEW && mode <= FM_FV_LIST_VIEW)
+#define FM_FOLDER_VIEW_MODE_IS_VALID(mode)  (mode >= FM_FV_ICON_VIEW && mode <= FM_FV_VERTICAL_COMPACT_VIEW)
+
+enum _FmFolderViewHintType
+{
+    FM_FV_HINT_NONE,
+    FM_FV_HINT_AUTO,
+    FM_FV_HINT_MTIME,
+    FM_FV_HINT_SIZE,
+    FM_FV_HINT_DESC
+};
+typedef enum _FmFolderViewHintType FmFolderViewHintType;
+
+#define FM_FOLDER_VIEW_HINT_TYPE_IS_VALID(type)  (type >= FM_FV_HINT_NONE && type <= FM_FV_HINT_DESC)
 
 enum _FmFolderViewClickType
 {
@@ -75,6 +87,7 @@ struct _FmFolderView
     GtkScrolledWindow parent;
 
     FmFolderViewMode mode;
+    FmFolderViewHintType hint;
     GtkSelectionMode sel_mode;
     GtkSortType sort_type;
     int sort_by;
@@ -94,6 +107,8 @@ struct _FmFolderView
     /* wordarounds to fix new gtk+ bug introduced in gtk+ 2.20: #612802 */
     GtkTreeRowReference* activated_row_ref; /* for row-activated handler */
     guint row_activated_idle;
+
+    GtkCellRenderer* hinted_column_render;
 };
 
 struct _FmFolderViewClass
@@ -112,6 +127,9 @@ GtkWidget*  fm_folder_view_new          (FmFolderViewMode mode);
 
 void fm_folder_view_set_mode(FmFolderView* fv, FmFolderViewMode mode);
 FmFolderViewMode fm_folder_view_get_mode(FmFolderView* fv);
+
+void fm_folder_view_set_hint_type(FmFolderView* fv, FmFolderViewHintType hint);
+FmFolderViewHintType fm_folder_view_get_hint_type(FmFolderView* fv);
 
 void fm_folder_view_set_selection_mode(FmFolderView* fv, GtkSelectionMode mode);
 GtkSelectionMode fm_folder_view_get_selection_mode(FmFolderView* fv);

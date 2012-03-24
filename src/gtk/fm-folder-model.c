@@ -47,7 +47,8 @@ struct _FmFolderItem
 {
     FmFileInfo* inf;
     GdkPixbuf* icon;
-    gchar * extended_disp_name;
+    gchar * hinted_disp_name;
+    int hint_column;
     gboolean is_thumbnail : 1;
     gboolean thumbnail_loading : 1;
     gboolean thumbnail_failed : 1;
@@ -196,7 +197,9 @@ void fm_folder_model_tree_model_init(GtkTreeModelIface *iface)
     column_types [ COL_FILE_MTIME ] = G_TYPE_STRING;
     column_types [ COL_FILE_INFO ] = G_TYPE_POINTER;
     column_types [ COL_FILE_GICON ] = G_TYPE_ICON;
-    column_types [ COL_EXTENDED_FILE_NAME ] = G_TYPE_STRING;
+    column_types [ COL_FILE_NAME_HINT_SIZE ] = G_TYPE_STRING;
+    column_types [ COL_FILE_NAME_HINT_MTIME ] = G_TYPE_STRING;
+    column_types [ COL_FILE_NAME_HINT_DESC ] = G_TYPE_STRING;
 }
 
 void fm_folder_model_tree_sortable_init(GtkTreeSortableIface *iface)
@@ -263,8 +266,8 @@ static inline FmFolderItem* fm_folder_item_new(FmFileInfo* inf)
 
 static inline void fm_folder_item_free(FmFolderItem* item)
 {
-    if (item->extended_disp_name)
-        g_free(item->extended_disp_name);
+    if (item->hinted_disp_name)
+        g_free(item->hinted_disp_name);
     if( item->icon )
         g_object_unref(item->icon);
     fm_file_info_unref(item->inf);
@@ -497,23 +500,42 @@ void fm_folder_model_get_value(GtkTreeModel *tree_model,
     case COL_FILE_NAME:
         g_value_set_string(value, info->disp_name);
         break;
-    case COL_EXTENDED_FILE_NAME:
+    case COL_FILE_NAME_HINT_SIZE:
+    case COL_FILE_NAME_HINT_MTIME:
+    case COL_FILE_NAME_HINT_DESC:
     {
         //g_value_set_string(value, info->disp_name);
-        if (!item->extended_disp_name)
+        if (!item->hinted_disp_name || item->hint_column != column)
         {
+            item->hint_column != column;
+            if (item->hinted_disp_name)
+                g_free(item->hinted_disp_name);
+
             gchar * s = NULL;
             if (fm_file_info_is_symlink(info))
                 s = fm_file_info_get_target(info);
             if (!s)
-                s = fm_file_info_get_disp_size(info);
+            {
+                switch (column)
+                {
+                    case COL_FILE_NAME_HINT_SIZE:
+                        s = fm_file_info_get_disp_size(info);
+                        break;
+                    case COL_FILE_NAME_HINT_MTIME:
+                        s = fm_file_info_get_disp_mtime(info);
+                        break;
+                    case COL_FILE_NAME_HINT_DESC:
+                        s = fm_file_info_get_desc(info);
+                        break;
+                }
+            }
             if (!s)
                 s = fm_file_info_get_desc(info);
             if (!s)
                 s = "";
-            item->extended_disp_name = g_strdup_printf("%s<span size='small'>\n<i>%s</i></span>", info->disp_name, s);
+            item->hinted_disp_name = g_markup_printf_escaped("%s<span size='small'>\n<i>%s</i></span>", info->disp_name, s);
         }
-        g_value_set_string(value, item->extended_disp_name);
+        g_value_set_string(value, item->hinted_disp_name);
         break;
     }
     case COL_FILE_SIZE:
