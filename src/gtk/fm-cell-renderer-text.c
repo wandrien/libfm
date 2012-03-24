@@ -68,6 +68,7 @@ void fm_cell_renderer_text_render(GtkCellRenderer *cell,
 	PangoWrapMode wrap_mode;
 	gint wrap_width;
 	PangoAlignment alignment;
+        PangoAttrList *attr_list = NULL;
 
 	/* FIXME: this is time-consuming since it invokes pango_layout.
 	 *        if we want to fix this, we must implement the whole cell
@@ -75,6 +76,18 @@ void fm_cell_renderer_text_render(GtkCellRenderer *cell,
 	PangoContext* context = gtk_widget_get_pango_context(widget);
 
 	PangoLayout* layout = pango_layout_new(context);
+
+        
+        if (celltext->extra_attrs)
+            attr_list = pango_attr_list_copy (celltext->extra_attrs);
+        /*else
+            attr_list = pango_attr_list_new ();*/
+
+        if (attr_list)
+        {
+            pango_layout_set_attributes (layout, attr_list);
+            pango_attr_list_unref (attr_list);
+        }
 
 	g_object_get((GObject*)cell,
 	             "wrap-mode" , &wrap_mode,

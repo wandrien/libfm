@@ -504,10 +504,16 @@ static inline void create_icon_view(FmFolderView* fv, GList* sels)
             fm_folder_model_set_icon_size(model, icon_size);
 
         render = fm_cell_renderer_text_new();
+        //render = gtk_cell_renderer_text_new();
         g_object_set((GObject*)render,
                      "xalign", 1.0, /* FIXME: why this needs to be 1.0? */
                      "yalign", 0.5,
                      NULL );
+
+        gtk_cell_layout_pack_start((GtkCellLayout*)fv->view, render, TRUE);
+        //gtk_cell_layout_add_attribute((GtkCellLayout*)fv->view, render, "text", COL_EXTENDED_FILE_NAME);
+        gtk_cell_layout_add_attribute((GtkCellLayout*)fv->view, render, "markup", COL_EXTENDED_FILE_NAME );
+
         exo_icon_view_set_layout_mode( (ExoIconView*)fv->view,
             fv->mode == FM_FV_VERTICAL_COMPACT_VIEW ? EXO_ICON_VIEW_LAYOUT_ROWS : EXO_ICON_VIEW_LAYOUT_COLS);
         exo_icon_view_set_orientation( (ExoIconView*)fv->view, GTK_ORIENTATION_HORIZONTAL );
@@ -532,6 +538,10 @@ static inline void create_icon_view(FmFolderView* fv, GList* sels)
                          "xalign", 0.5,
                          "yalign", 0.0,
                          NULL );
+
+            gtk_cell_layout_pack_start((GtkCellLayout*)fv->view, render, TRUE);
+            gtk_cell_layout_add_attribute((GtkCellLayout*)fv->view, render, "text", COL_FILE_NAME );
+
             exo_icon_view_set_column_spacing( (ExoIconView*)fv->view, 4 );
             //exo_icon_view_set_item_width ( (ExoIconView*)fv->view, 110 );
             exo_icon_view_set_item_width((ExoIconView*)fv->view, -1);
@@ -553,15 +563,17 @@ static inline void create_icon_view(FmFolderView* fv, GList* sels)
                          "xalign", 0.5,
                          "yalign", 0.0,
                          NULL );
+
+            gtk_cell_layout_pack_start((GtkCellLayout*)fv->view, render, TRUE);
+            gtk_cell_layout_add_attribute((GtkCellLayout*)fv->view, render, "text", COL_FILE_NAME );
+
             exo_icon_view_set_column_spacing( (ExoIconView*)fv->view, 8 );
             //exo_icon_view_set_item_width ( (ExoIconView*)fv->view, 200 );
             exo_icon_view_set_item_width((ExoIconView*)fv->view, 8);
             exo_icon_view_set_item_height((ExoIconView*)fv->view, 8);
+
         }
     }
-    gtk_cell_layout_pack_start((GtkCellLayout*)fv->view, render, TRUE);
-    gtk_cell_layout_add_attribute((GtkCellLayout*)fv->view, render,
-                                "text", COL_FILE_NAME );
     //exo_icon_view_set_item_width((ExoIconView*)fv->view, 96);
     exo_icon_view_set_search_column((ExoIconView*)fv->view, COL_FILE_NAME);
     g_signal_connect(fv->view, "item-activated", G_CALLBACK(on_icon_view_item_activated), fv);
