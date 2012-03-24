@@ -29,10 +29,12 @@
 enum
 {
     PREPARED,
-	CUR_FILE,
-	PERCENT,
+    CUR_FILE,
+    PERCENT,
     ASK_RENAME,
-	N_SIGNALS
+    TOTALBYTES,
+    FINISHEDBYTES,
+    N_SIGNALS
 };
 
 static guint signals[N_SIGNALS];
@@ -96,6 +98,23 @@ static void fm_file_ops_job_class_init(FmFileOpsJobClass *klass)
                       fm_marshal_INT__POINTER_POINTER_POINTER,
                       G_TYPE_INT, 3, G_TYPE_POINTER, G_TYPE_POINTER, G_TYPE_POINTER );
 
+    signals[TOTALBYTES] =
+        g_signal_new( "total-bytes",
+                      G_TYPE_FROM_CLASS ( klass ),
+                      G_SIGNAL_RUN_FIRST,
+                      G_STRUCT_OFFSET ( FmFileOpsJobClass, total_bytes ),
+                      NULL, NULL,
+                      g_cclosure_marshal_VOID__POINTER,
+                      G_TYPE_NONE, 1, G_TYPE_POINTER );
+
+    signals[FINISHEDBYTES] =
+        g_signal_new( "finished-bytes",
+                      G_TYPE_FROM_CLASS ( klass ),
+                      G_SIGNAL_RUN_FIRST,
+                      G_STRUCT_OFFSET ( FmFileOpsJobClass, finished_bytes ),
+                      NULL, NULL,
+                      g_cclosure_marshal_VOID__POINTER,
+                      G_TYPE_NONE, 1, G_TYPE_POINTER );
 }
 
 
@@ -224,6 +243,28 @@ void fm_file_ops_job_emit_percent(FmFileOpsJob* job)
     	fm_job_call_main_thread(FM_JOB(job), emit_percent, (gpointer)percent);
         job->percent = percent;
     }
+}
+
+static void emit_total_bytes(FmFileOpsJob* job, gpointer * total_bytes)
+{
+    g_signal_emit(job, signals[TOTALBYTES], 0, total_bytes);
+}
+
+void fm_file_ops_job_emit_total_bytes(FmFileOpsJob* job)
+{
+    goffset total = job->total;
+    fm_job_call_main_thread(FM_JOB(job), emit_total_bytes, (gpointer)&total);
+}
+
+static void emit_finished_bytes(FmFileOpsJob* job, gpointer * finished_bytes)
+{
+    g_signal_emit(job, signals[FINISHEDBYTES], 0, finished_bytes);
+}
+
+void fm_file_ops_job_emit_finished_bytes(FmFileOpsJob* job)
+{
+    goffset finished = job->finished + job->current_file_finished;
+    fm_job_call_main_thread(FM_JOB(job), emit_finished_bytes, (gpointer)&finished);
 }
 
 static void emit_prepared(FmFileOpsJob* job, gpointer user_data)

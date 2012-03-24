@@ -163,6 +163,7 @@ _retry_query_src_info:
                     case FM_FILE_OP_SKIP:
                         /* when a dir is skipped, we need to know its total size to calculate correct progress */
                         job->finished += size;
+                        fm_file_ops_job_emit_finished_bytes(job);
                         fm_file_ops_job_emit_percent(job);
                         job->skip_dir_content = TRUE;
                         ret = FALSE;
@@ -188,6 +189,7 @@ _retry_query_src_info:
                     ret = FALSE;
                 }
                 job->finished += size;
+                fm_file_ops_job_emit_finished_bytes(job);
                 fm_file_ops_job_emit_percent(job);
             }
             else
@@ -215,6 +217,7 @@ _retry_query_src_info:
                     ret = TRUE;
                 }
                 job->finished += size;
+                fm_file_ops_job_emit_finished_bytes(job);
                 fm_file_ops_job_emit_percent(job);
 
                 if(job->dest_folder_mon)
@@ -246,6 +249,7 @@ _retry_query_src_info:
                             {
                                 /* FIXME: this is incorrect as we don't do the calculation recursively. */
                                 job->finished += g_file_info_get_size(inf);
+                                fm_file_ops_job_emit_finished_bytes(job);
                                 fm_file_ops_job_emit_percent(job);
                             }
                             else
@@ -363,6 +367,7 @@ _retry_query_src_info:
             }
         }
         job->finished += size;
+        fm_file_ops_job_emit_finished_bytes(job);
         fm_file_ops_job_emit_percent(job);
 
     default:
@@ -604,6 +609,7 @@ _retry_query_src_info:
         size = g_file_info_get_size(inf);
 
         job->finished += size;
+        fm_file_ops_job_emit_finished_bytes(job);
         fm_file_ops_job_emit_percent(job);
     }
     else /* use copy if they are on different devices */
@@ -625,6 +631,7 @@ void progress_cb(goffset cur, goffset total, FmFileOpsJob* job)
     job->current_file_finished = cur;
     /* update progress */
     fm_file_ops_job_emit_percent(job);
+    fm_file_ops_job_emit_finished_bytes(job);
 }
 
 gboolean _fm_file_ops_job_copy_run(FmFileOpsJob* job)
@@ -648,6 +655,8 @@ gboolean _fm_file_ops_job_copy_run(FmFileOpsJob* job)
     }
     g_object_unref(dc);
     g_debug("total size to copy: %llu", job->total);
+
+    fm_file_ops_job_emit_total_bytes(job);
 
     dest_dir = fm_path_to_gfile(job->dest);
     /* get dummy file monitors for non-native filesystems */
@@ -738,6 +747,8 @@ _retry_query_dest_info:
     }
     g_object_unref(dc);
     g_debug("total size to move: %llu, dest_fs: %s", job->total, job->dest_fs_id);
+
+    fm_file_ops_job_emit_total_bytes(job);
 
     /* get dummy file monitors for non-native filesystems */
     if( g_file_is_native(dest_dir) )

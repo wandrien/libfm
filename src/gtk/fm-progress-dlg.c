@@ -51,6 +51,8 @@ struct _FmProgressDisplay
     GtkWidget* current;
     GtkWidget* progress;
     GtkWidget* remaining_time;
+    GtkWidget* bytes;
+    GtkWidget* label_bytes;
     GtkWidget* error_pane;
     GtkWidget* error_msg;
     GtkTextBuffer* error_buf;
@@ -64,6 +66,11 @@ struct _FmProgressDisplay
     guint delay_timeout;
     guint update_timeout;
 
+    goffset total_bytes;
+    goffset old_total_bytes;
+    goffset finished_bytes;
+    goffset old_finished_bytes;
+
     GTimer* timer;
 
     gboolean has_error : 1;
@@ -71,6 +78,16 @@ struct _FmProgressDisplay
 
 static void ensure_dlg(FmProgressDisplay* data);
 static void fm_progress_display_destroy(FmProgressDisplay* data);
+
+static void on_total_bytes(FmFileOpsJob* job, goffset * total_bytes, FmProgressDisplay* data)
+{
+    data->total_bytes = *total_bytes;
+}
+
+static void on_finished_bytes(FmFileOpsJob* job, goffset * finished_bytes, FmProgressDisplay* data)
+{
+    data->finished_bytes = *finished_bytes;
+}
 
 static void on_percent(FmFileOpsJob* job, guint percent, FmProgressDisplay* data)
 {
@@ -375,6 +392,28 @@ static gboolean on_update_dlg(FmProgressDisplay* data)
         gtk_label_set_text(GTK_LABEL(data->current), data->cur_file);
         data->old_cur_file = data->cur_file;
     }
+
+    if (data->old_total_bytes != data->total_bytes || data->old_finished_bytes != data->finished_bytes)
+    {
+        data->old_total_bytes = data->total_bytes;
+        data->old_finished_bytes = data->finished_bytes;
+
+        if (data->total_bytes && data->finished_bytes)
+        {
+            gtk_widget_show(data->bytes);
+            gtk_widget_show(data->label_bytes);
+
+            char text[128];
+            g_snprintf(text, 128, _("%'" G_GOFFSET_FORMAT " of %'" G_GOFFSET_FORMAT), data->finished_bytes, data->total_bytes);
+            gtk_label_set_text(GTK_LABEL(data->bytes), text);
+        }
+        else
+        {
+            gtk_widget_hide(data->bytes);
+            gtk_widget_hide(data->label_bytes);
+        }
+    }
+    
     return TRUE;
 }
 
@@ -402,6 +441,8 @@ static gboolean on_show_dlg(FmProgressDisplay* data)
     data->dest = (GtkWidget*)gtk_builder_get_object(builder, "dest");
     data->current = (GtkWidget*)gtk_builder_get_object(builder, "current");
     data->progress = (GtkWidget*)gtk_builder_get_object(builder, "progress");
+    data->bytes = (GtkWidget*)gtk_builder_get_object(builder, "bytes");
+    data->label_bytes = (GtkWidget*)gtk_builder_get_object(builder, "label_bytes");
     data->error_pane = (GtkWidget*)gtk_builder_get_object(builder, "error_pane");
     data->error_msg = (GtkWidget*)gtk_builder_get_object(builder, "error_msg");
     data->remaining_time = (GtkWidget*)gtk_builder_get_object(builder, "remaining_time");
@@ -481,6 +522,9 @@ static gboolean on_show_dlg(FmProgressDisplay* data)
         gtk_widget_destroy(to_label);
     }
 
+    gtk_widget_hide(data->bytes);
+    gtk_widget_hide(data->label_bytes);
+
     gtk_window_present(GTK_WINDOW(data->dlg));
     data->update_timeout = g_timeout_add(500, (GSourceFunc)on_update_dlg, data);
 
@@ -534,6 +578,8 @@ FmProgressDisplay* fm_file_ops_job_run_with_progress(GtkWindow* parent, FmFileOp
     g_signal_connect(job, "prepared", G_CALLBACK(on_prepared), data);
     g_signal_connect(job, "cur-file", G_CALLBACK(on_cur_file), data);
     g_signal_connect(job, "percent", G_CALLBACK(on_percent), data);
+    g_signal_connect(job, "total-bytes", G_CALLBACK(on_total_bytes), data);
+    g_signal_connect(job, "finished-bytes", G_CALLBACK(on_finished_bytes), data);
     g_signal_connect(job, "finished", G_CALLBACK(on_finished), data);
     g_signal_connect(job, "cancelled", G_CALLBACK(on_cancelled), data);
 
@@ -553,6 +599,8 @@ void fm_progress_display_destroy(FmProgressDisplay* data)
         g_signal_handlers_disconnect_by_func(data->job, on_error, data);
         g_signal_handlers_disconnect_by_func(data->job, on_cur_file, data);
         g_signal_handlers_disconnect_by_func(data->job, on_percent, data);
+        g_signal_handlers_disconnect_by_func(data->job, on_total_bytes, data);
+        g_signal_handlers_disconnect_by_func(data->job, on_finished_bytes, data);
         g_signal_handlers_disconnect_by_func(data->job, on_finished, data);
 
         g_object_unref(data->job);

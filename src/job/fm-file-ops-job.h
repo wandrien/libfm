@@ -112,6 +112,8 @@ struct _FmFileOpsJobClass
     void (*cur_file)(FmFileOpsJob* job, FmPath* file);
     void (*percent)(FmFileOpsJob* job, guint percent);
     FmFileOpOption (*ask_rename)(FmFileOpsJob* job, FmFileInfo* src, FmFileInfo* dest, char** new_name);
+    void (*total_bytes)(FmFileOpsJob* job, goffset * total_bytes);
+    void (*finished_bytes)(FmFileOpsJob* job, goffset * finished_bytes);
 };
 
 GType fm_file_ops_job_get_type        (void);
@@ -128,6 +130,8 @@ void fm_file_ops_job_set_chown(FmFileOpsJob* job, guint uid, guint gid);
 void fm_file_ops_job_emit_prepared(FmFileOpsJob* job);
 void fm_file_ops_job_emit_cur_file(FmFileOpsJob* job, const char* cur_file);
 void fm_file_ops_job_emit_percent(FmFileOpsJob* job);
+void fm_file_ops_job_emit_total_bytes(FmFileOpsJob* job);
+void fm_file_ops_job_emit_finished_bytes(FmFileOpsJob* job);
 FmFileOpOption fm_file_ops_job_ask_rename(FmFileOpsJob* job, GFile* src, GFileInfo* src_inf, GFile* dest, GFile** new_dest);
 
 G_END_DECLS
