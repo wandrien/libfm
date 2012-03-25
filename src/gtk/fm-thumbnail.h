@@ -36,6 +36,8 @@ void _fm_thumbnail_init();
 
 void _fm_thumbnail_finalize();
 
+GdkPixbuf* fm_thumbnail_try_read_from_cache(FmFileInfo* src_file, guint size);
+
 FmThumbnailRequest* fm_thumbnail_request(FmFileInfo* src_file,
                                     guint size,
                                     FmThumbnailReadyCallback callback,

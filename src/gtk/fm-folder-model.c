@@ -472,7 +472,6 @@ void fm_folder_model_get_value(GtkTreeModel *tree_model,
                 return;
             item->icon = fm_icon_get_pixbuf(info->icon, model->icon_size);
         }
-        g_value_set_object(value, item->icon);
 
         /* if we want to show a thumbnail */
         /* if we're on local filesystem or thumbnailing for remote files is allowed */
@@ -484,9 +483,20 @@ void fm_folder_model_get_value(GtkTreeModel *tree_model,
                 {
                     if(item->inf->size > 0 && (fm_config->thumbnail_max == 0 || item->inf->size <= (fm_config->thumbnail_max << 10)))
                     {
-                        FmThumbnailRequest* req = fm_thumbnail_request(item->inf, model->icon_size, on_thumbnail_loaded, model);
-                        model->thumbnail_requests = g_list_prepend(model->thumbnail_requests, req);
-                        item->thumbnail_loading = TRUE;
+                        GdkPixbuf * pix = fm_thumbnail_try_read_from_cache(item->inf, model->icon_size);
+                        if (pix)
+                        {
+                           if (item->icon)
+                               g_object_unref(item->icon);
+                           item->icon = pix;
+                           item->is_thumbnail = TRUE;
+                        }
+                        else
+                        {
+                            FmThumbnailRequest* req = fm_thumbnail_request(item->inf, model->icon_size, on_thumbnail_loaded, model);
+                            model->thumbnail_requests = g_list_prepend(model->thumbnail_requests, req);
+                            item->thumbnail_loading = TRUE;
+                        }
                     }
                 }
                 else
@@ -495,6 +505,9 @@ void fm_folder_model_get_value(GtkTreeModel *tree_model,
                 }
             }
         }
+
+        g_value_set_object(value, item->icon);
+        
         break;
     }
     case COL_FILE_NAME:
