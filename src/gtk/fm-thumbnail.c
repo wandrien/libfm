@@ -75,6 +75,8 @@ struct _FmThumbnailRequest
     FmThumbnailReadyCallback callback;
     gpointer user_data;
     GdkPixbuf* pix;
+    gpointer payload1;
+    gpointer payload2;
 };
 /*
 typedef struct _ThumbnailCacheItem ThumbnailCacheItem;
@@ -282,7 +284,7 @@ inline static void cache_thumbnail(FmFileInfo *fi, GdkPixbuf* pix, guint size)
 }
 
 /* should be called with queue locked */
-inline static GdkPixbuf* find_thumbnail_in_hash(FmFileInfo * fi, guint size)
+inline static GdkPixbuf* find_thumbnail_in_cache(FmFileInfo * fi, guint size)
 {
     //if (1) return;
     
@@ -611,7 +613,7 @@ GdkPixbuf* fm_thumbnail_try_read_from_cache(FmFileInfo* src_file, guint size)
 {
     G_LOCK(queue);
 
-    GdkPixbuf* pix = find_thumbnail_in_hash(src_file, size);
+    GdkPixbuf* pix = find_thumbnail_in_cache(src_file, size);
     if(pix)
     {
         DEBUG("cache found!");
@@ -627,6 +629,16 @@ FmThumbnailRequest* fm_thumbnail_request(FmFileInfo* src_file,
                                     FmThumbnailReadyCallback callback,
                                     gpointer user_data)
 {
+    return fm_thumbnail_request2(src_file, size, callback, user_data, NULL, NULL);
+}
+
+FmThumbnailRequest* fm_thumbnail_request2(FmFileInfo* src_file,
+                                    guint size,
+                                    FmThumbnailReadyCallback callback,
+                                    gpointer user_data,
+                                    gpointer payload1,
+                                    gpointer payload2)
+{
     FmThumbnailRequest* req;
     ThumbnailTask* task;
     GdkPixbuf* pix;
@@ -637,12 +649,14 @@ FmThumbnailRequest* fm_thumbnail_request(FmFileInfo* src_file,
     req->callback = callback;
     req->user_data = user_data;
     req->pix = NULL;
+    req->payload1 = payload1;
+    req->payload2 = payload2;
 
     DEBUG("request thumbnail: %s", src_file->path->name);
 
     G_LOCK(queue);
 
-    pix = find_thumbnail_in_hash(src_file, size);
+    pix = find_thumbnail_in_cache(src_file, size);
     if(pix)
     {
         DEBUG("cache found!");
@@ -795,6 +809,16 @@ FmFileInfo* fm_thumbnail_request_get_file_info(FmThumbnailRequest* req)
 guint fm_thumbnail_request_get_size(FmThumbnailRequest* req)
 {
     return req->size;
+}
+
+gpointer fm_thumbnail_request_get_payload1(FmThumbnailRequest* req)
+{
+    return req->payload1;
+}
+
+gpointer fm_thumbnail_request_get_payload2(FmThumbnailRequest* req)
+{
+    return req->payload2;
 }
 
 void _fm_thumbnail_init()

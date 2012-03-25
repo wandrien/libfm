@@ -43,6 +43,13 @@ FmThumbnailRequest* fm_thumbnail_request(FmFileInfo* src_file,
                                     FmThumbnailReadyCallback callback,
                                     gpointer user_data);
 
+FmThumbnailRequest* fm_thumbnail_request2(FmFileInfo* src_file,
+                                    guint size,
+                                    FmThumbnailReadyCallback callback,
+                                    gpointer user_data,
+                                    gpointer payload1,
+                                    gpointer payload2);
+
 void fm_thumbnail_request_cancel(FmThumbnailRequest* req);
 
 GdkPixbuf* fm_thumbnail_request_get_pixbuf(FmThumbnailRequest* req);
@@ -50,6 +57,9 @@ GdkPixbuf* fm_thumbnail_request_get_pixbuf(FmThumbnailRequest* req);
 FmFileInfo* fm_thumbnail_request_get_file_info(FmThumbnailRequest* req);
 
 guint fm_thumbnail_request_get_size(FmThumbnailRequest* req);
+
+gpointer fm_thumbnail_request_get_payload1(FmThumbnailRequest* req);
+gpointer fm_thumbnail_request_get_payload2(FmThumbnailRequest* req);
 
 G_END_DECLS
 

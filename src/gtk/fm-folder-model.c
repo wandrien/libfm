@@ -49,6 +49,8 @@ struct _FmFolderItem
     GdkPixbuf* icon;
     gchar * hinted_disp_name;
     int hint_column;
+    GSequenceIter * iter;
+    guint iter_age;
     gboolean is_thumbnail : 1;
     gboolean thumbnail_loading : 1;
     gboolean thumbnail_failed : 1;
@@ -317,6 +319,9 @@ void fm_folder_model_set_folder(FmFolderModel* model, FmFolder* dir)
     GSequenceIter *it;
     if( model->dir == dir )
         return;
+
+    model->iter_age++;
+
     if( model->dir )
     {
         g_signal_handlers_disconnect_by_func(model->dir,
@@ -493,7 +498,7 @@ void fm_folder_model_get_value(GtkTreeModel *tree_model,
                         }
                         else
                         {
-                            FmThumbnailRequest* req = fm_thumbnail_request(item->inf, model->icon_size, on_thumbnail_loaded, model);
+                            FmThumbnailRequest* req = fm_thumbnail_request2(item->inf, model->icon_size, on_thumbnail_loaded, model, item->iter_age, item);
                             model->thumbnail_requests = g_list_prepend(model->thumbnail_requests, req);
                             item->thumbnail_loading = TRUE;
                         }
@@ -836,6 +841,8 @@ void _fm_folder_model_insert_item(FmFolder* dir,
     FmFileInfo* file = new_item->inf;
 
     GSequenceIter *item_it = g_sequence_insert_sorted(model->items, new_item, fm_folder_model_compare, model);
+    new_item->iter = item_it;
+    new_item->iter_age = model->iter_age;
 
     it.stamp = model->stamp;
     it.user_data  = item_it;
@@ -903,6 +910,7 @@ void fm_folder_model_file_deleted(FmFolderModel* model, FmFileInfo* file)
         gtk_tree_model_row_deleted(GTK_TREE_MODEL(model), path);
         gtk_tree_path_free(path);
     }
+    model->iter_age++;
     g_sequence_remove(seq_it);
 }
 
@@ -1118,19 +1126,33 @@ gboolean fm_folder_model_find_iter_by_filename(FmFolderModel* model, GtkTreeIter
     return FALSE;
 }
 
-static gboolean fm_folder_model_find_iter_by_fileinfo(FmFolderModel* model, GtkTreeIter* it, FmFileInfo* fi)
+static gboolean fm_folder_model_find_iter_by_req(FmFolderModel* model, GtkTreeIter* it, FmThumbnailRequest* req)
 {
+    guint iter_age = (guint)fm_thumbnail_request_get_payload1(req);
+    FmFolderItem* item = (FmFolderItem*)fm_thumbnail_request_get_payload2(req);
+    if (iter_age && item && model->iter_age == iter_age && item == (FmFolderItem*)g_sequence_get(item->iter))
+    {
+        it->stamp = model->stamp;
+        it->user_data  = item->iter;
+        return TRUE;
+    }
+
+    FmFileInfo* fi = fm_thumbnail_request_get_file_info(req);
+
     GSequenceIter *item_it = g_sequence_get_begin_iter(model->items);
     for( ; !g_sequence_iter_is_end(item_it); item_it = g_sequence_iter_next(item_it) )
     {
-        FmFolderItem* item = (FmFolderItem*)g_sequence_get(item_it);
-        if (item->inf == fi)
+        FmFolderItem* item1 = (FmFolderItem*)g_sequence_get(item_it);
+        if (item1 == item && item1->inf == fi)
         {
+            item1->iter = item_it;
+            item1->iter_age = model->iter_age;
             it->stamp = model->stamp;
             it->user_data  = item_it;
             return TRUE;
         }
     }
+
     return FALSE;
 }
 
@@ -1148,7 +1170,7 @@ void on_thumbnail_loaded(FmThumbnailRequest* req, gpointer user_data)
     /* remove the request from list */
     model->thumbnail_requests = g_list_remove(model->thumbnail_requests, req);
 
-    if (fm_folder_model_find_iter_by_fileinfo(model, &it, fi))
+    if (fm_folder_model_find_iter_by_req(model, &it, req))
     {
         FmFolderItem* item;
         seq_it = (GSequenceIter*)it.user_data;

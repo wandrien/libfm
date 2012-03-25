@@ -68,6 +68,7 @@ struct _FmFolderModel
     FmFolder* dir;
     GSequence *items;
     GSequence* hidden; /* items hidden by filter */
+    guint iter_age;
 
     gboolean show_hidden : 1;
 
