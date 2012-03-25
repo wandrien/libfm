@@ -109,6 +109,7 @@ struct _FmFolderView
     guint row_activated_idle;
 
     GtkCellRenderer* hinted_column_render;
+    GtkCellRenderer* title_render;
 };
 
 struct _FmFolderViewClass

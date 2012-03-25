@@ -314,6 +314,11 @@ static void fm_folder_view_finalize(GObject *object)
         g_object_unref(G_OBJECT(self->hinted_column_render));
     }
 
+    if (self->title_render)
+    {
+        g_object_unref(G_OBJECT(self->title_render));
+    }
+
     if(self->cwd)
         fm_path_unref(self->cwd);
 
@@ -334,6 +339,17 @@ static void set_icon_size(FmFolderView* fv, guint icon_size)
     FmCellRendererPixbuf* render = (FmCellRendererPixbuf*)fv->renderer_pixbuf;
     if (fv->mode != FM_FV_THUMBNAIL_VIEW)
         fm_cell_renderer_pixbuf_set_fixed_size(render, icon_size, icon_size);
+
+    int title_wrap_width = 90;
+    if (title_wrap_width < icon_size)
+        title_wrap_width = icon_size;
+
+    if (fv->title_render)
+    {
+        g_object_set((GObject*)fv->title_render,
+            "wrap-width", title_wrap_width,
+            NULL);
+    }
 
     if(!fv->model)
         return;
@@ -575,23 +591,28 @@ static inline void create_icon_view(FmFolderView* fv, GList* sels)
     }
     else /* big icon view or thumbnail view */
     {
+        if (fv->title_render)
+        {
+            g_object_unref(G_OBJECT(fv->title_render));
+            fv->title_render = NULL;
+        }
+
         if(fv->mode == FM_FV_ICON_VIEW)
         {
-            fv->icon_size_changed_handler = g_signal_connect(fm_config, "changed::big_icon_size", G_CALLBACK(on_big_icon_size_changed), fv);
-            icon_size = fm_config->big_icon_size;
-            fm_cell_renderer_pixbuf_set_fixed_size(FM_CELL_RENDERER_PIXBUF(fv->renderer_pixbuf), icon_size, icon_size);
-            if(model)
-                fm_folder_model_set_icon_size(model, icon_size);
+            fv->title_render = render = fm_cell_renderer_text_new();
+            g_object_ref(G_OBJECT(fv->title_render));
 
-            render = fm_cell_renderer_text_new();
-            /* FIXME: set the sizes of cells according to iconsize */
             g_object_set((GObject*)render,
                          "wrap-mode", PANGO_WRAP_WORD_CHAR,
-                         "wrap-width", 90,
                          "alignment", PANGO_ALIGN_CENTER,
                          "xalign", 0.5,
                          "yalign", 0.0,
                          NULL );
+
+            fv->icon_size_changed_handler = g_signal_connect(fm_config, "changed::big_icon_size", G_CALLBACK(on_big_icon_size_changed), fv);
+            icon_size = fm_config->big_icon_size;
+
+            set_icon_size(fv, icon_size);
 
             gtk_cell_layout_pack_start((GtkCellLayout*)fv->view, render, TRUE);
             gtk_cell_layout_add_attribute((GtkCellLayout*)fv->view, render, "text", COL_FILE_NAME );
@@ -602,21 +623,20 @@ static inline void create_icon_view(FmFolderView* fv, GList* sels)
         }
         else
         {
-            fv->icon_size_changed_handler = g_signal_connect(fm_config, "changed::thumbnail_size", G_CALLBACK(on_thumbnail_size_changed), fv);
-            icon_size = fm_config->thumbnail_size;
-            //fm_cell_renderer_pixbuf_set_fixed_size(FM_CELL_RENDERER_PIXBUF(fv->renderer_pixbuf), icon_size, icon_size);
-            if(model)
-                fm_folder_model_set_icon_size(model, icon_size);
+            fv->title_render = render = fm_cell_renderer_text_new();
+            g_object_ref(G_OBJECT(fv->title_render));
 
-            render = fm_cell_renderer_text_new();
-            /* FIXME: set the sizes of cells according to iconsize */
             g_object_set((GObject*)render,
                          "wrap-mode", PANGO_WRAP_WORD_CHAR,
-                         "wrap-width", 180,
                          "alignment", PANGO_ALIGN_CENTER,
                          "xalign", 0.5,
                          "yalign", 0.0,
                          NULL );
+
+            fv->icon_size_changed_handler = g_signal_connect(fm_config, "changed::thumbnail_size", G_CALLBACK(on_thumbnail_size_changed), fv);
+            icon_size = fm_config->thumbnail_size;
+
+            set_icon_size(fv, icon_size);
 
             gtk_cell_layout_pack_start((GtkCellLayout*)fv->view, render, TRUE);
             gtk_cell_layout_add_attribute((GtkCellLayout*)fv->view, render, "text", COL_FILE_NAME );
@@ -625,7 +645,6 @@ static inline void create_icon_view(FmFolderView* fv, GList* sels)
             //exo_icon_view_set_item_width ( (ExoIconView*)fv->view, 200 );
             exo_icon_view_set_item_width((ExoIconView*)fv->view, 8);
             exo_icon_view_set_item_height((ExoIconView*)fv->view, 8);
-
         }
     }
     //exo_icon_view_set_item_width((ExoIconView*)fv->view, 96);
@@ -727,6 +746,12 @@ void fm_folder_view_set_mode(FmFolderView* fv, FmFolderViewMode mode)
         {
             g_object_unref(G_OBJECT(fv->hinted_column_render));
             fv->hinted_column_render = NULL;
+        }
+
+        if (fv->title_render)
+        {
+            g_object_unref(G_OBJECT(fv->title_render));
+            fv->title_render = NULL;
         }
 
         if( G_LIKELY(fv->view) )
