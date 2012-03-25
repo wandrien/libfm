@@ -138,8 +138,10 @@ void fm_cell_renderer_text_render(GtkCellRenderer *cell,
 
 		if(flags & GTK_CELL_RENDERER_INSENSITIVE) /* insensitive */
 			state = GTK_STATE_INSENSITIVE;
-		else
+		else if (gtk_widget_has_focus (widget))
 			state = GTK_STATE_SELECTED;
+		else
+			state = GTK_STATE_ACTIVE;
 
 		clr = widget->style->bg[state];
 

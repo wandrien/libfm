@@ -571,7 +571,7 @@ static inline void create_icon_view(FmFolderView* fv, GList* sels)
         }
 
         fv->hinted_column_render = render = fm_cell_renderer_text_new();
-        //render = gtk_cell_renderer_text_new();
+        //fv->hinted_column_render = render = gtk_cell_renderer_text_new();
 
         g_object_ref(G_OBJECT(fv->hinted_column_render));
 
