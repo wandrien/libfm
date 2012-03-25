@@ -1893,11 +1893,12 @@ exo_icon_view_motion_notify_event (GtkWidget      *widget,
       item = exo_icon_view_get_item_at_coords (icon_view, event->x, event->y, TRUE, NULL);
       if (item != icon_view->priv->prelit_item)
         {
-          if (G_LIKELY (icon_view->priv->prelit_item != NULL))
-            exo_icon_view_queue_draw_item (icon_view, icon_view->priv->prelit_item);
+           /* we don't need to follow state for prelit items */
+          /*if (G_LIKELY (icon_view->priv->prelit_item != NULL))
+            exo_icon_view_queue_draw_item (icon_view, icon_view->priv->prelit_item);*/
           icon_view->priv->prelit_item = item;
-          if (G_LIKELY (item != NULL))
-            exo_icon_view_queue_draw_item (icon_view, item);
+          /*if (G_LIKELY (item != NULL))
+            exo_icon_view_queue_draw_item (icon_view, item);*/
 
           /* check if we are in single click mode right now */
           if (G_UNLIKELY (icon_view->priv->single_click))
