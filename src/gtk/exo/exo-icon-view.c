@@ -2671,7 +2671,14 @@ exo_icon_view_stop_rubberbanding (ExoIconView *icon_view)
     {
       icon_view->priv->doing_rubberband = FALSE;
       gtk_grab_remove (GTK_WIDGET (icon_view));
-      gtk_widget_queue_draw (GTK_WIDGET (icon_view));
+      //gtk_widget_queue_draw (GTK_WIDGET (icon_view));
+      GdkRectangle rubber_rect;
+      rubber_rect.x = MIN (icon_view->priv->rubberband_x_1, icon_view->priv->rubberband_x2) - 1;
+      rubber_rect.y = MIN (icon_view->priv->rubberband_y_1, icon_view->priv->rubberband_y2) - 1;
+      rubber_rect.width = ABS (icon_view->priv->rubberband_x_1 - icon_view->priv->rubberband_x2) + 3;
+      rubber_rect.height = ABS (icon_view->priv->rubberband_y_1 - icon_view->priv->rubberband_y2) + 3;
+      exo_icon_view_icon_to_widget_coords(icon_view, rubber_rect.x, rubber_rect.y, &rubber_rect.x, &rubber_rect.y);
+      gtk_widget_queue_draw_area(GTK_WIDGET(icon_view), rubber_rect.x, rubber_rect.y, rubber_rect.width, rubber_rect.height);
 
       /* drop the GCs for drawing the rubberband */
       g_object_unref (G_OBJECT (icon_view->priv->rubberband_border_gc));
