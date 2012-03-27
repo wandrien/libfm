@@ -59,6 +59,8 @@ void fm_path_entry_set_path(FmPathEntry *entry, FmPath* path);
  * fm_path_ref if it wants to keep the path. */
 FmPath* fm_path_entry_get_path(FmPathEntry *entry);
 
+void fm_path_entry_activate(FmPathEntry *entry);
+
 G_END_DECLS
 
 #endif /* __FM_PATH_ENTRY_H__ */

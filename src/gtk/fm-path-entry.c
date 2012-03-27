@@ -74,7 +74,7 @@ typedef struct
     GCancellable* cancellable;
 }ListSubDirNames;
 
-static void      fm_path_entry_activate(GtkEntry *entry, gpointer user_data);
+static void      fm_path_entry_on_activate(GtkEntry *entry, gpointer user_data);
 static gboolean  fm_path_entry_key_press(GtkWidget   *widget, GdkEventKey *event, gpointer user_data);
 static void      fm_path_entry_class_init(FmPathEntryClass *klass);
 static void  fm_path_entry_editable_init(GtkEditableClass *iface);
@@ -162,7 +162,7 @@ static gboolean fm_path_entry_key_press(GtkWidget   *widget, GdkEventKey *event,
     return FALSE;
 }
 
-static void  fm_path_entry_activate(GtkEntry *entry, gpointer user_data)
+static void  fm_path_entry_on_activate(GtkEntry *entry, gpointer user_data)
 {
     FmPathEntryPrivate *priv  = FM_PATH_ENTRY_GET_PRIVATE(entry);
     const char* full_path;
@@ -203,7 +203,7 @@ static void fm_path_entry_class_init(FmPathEntryClass *klass)
                                                          "Wheather to highlight the completion match",
                                                          TRUE, G_PARAM_READWRITE) );
     object_class->finalize = fm_path_entry_finalize;
-    /* entry_class->activate = fm_path_entry_activate; */
+    /* entry_class->activate = fm_path_entry_on_activate; */
 
     widget_class->focus_in_event = fm_path_entry_focus_in_event;
     widget_class->focus_out_event = fm_path_entry_focus_out_event;
@@ -490,7 +490,7 @@ static void fm_path_entry_paste_and_go(GtkMenuItem *menuitem, GtkEntry *entry)
 
         g_free(full_path);
 
-        g_signal_emit_by_name(entry, "activate", 0);
+        fm_path_entry_activate(FM_PATH_ENTRY(entry));
     }
 }
 
@@ -553,7 +553,7 @@ fm_path_entry_init(FmPathEntry *entry)
     /* connect to these signals rather than overriding default handlers since
      * we want to invoke our handlers before the default ones provided by Gtk. */
     g_signal_connect(entry, "key-press-event", G_CALLBACK(fm_path_entry_key_press), NULL);
-    g_signal_connect(entry, "activate", G_CALLBACK(fm_path_entry_activate), NULL);
+    g_signal_connect(entry, "activate", G_CALLBACK(fm_path_entry_on_activate), NULL);
     g_signal_connect(entry, "populate-popup", G_CALLBACK(fm_path_entry_populate_popup), NULL);
 }
 
@@ -704,4 +704,9 @@ static GtkTreeModel* fm_path_entry_model_new(FmPathEntry* entry)
     FmPathEntryModel* model = g_object_new(FM_TYPE_PATH_ENTRY_MODEL, NULL);
     model->entry = entry;
     return model;
+}
+
+void fm_path_entry_activate(FmPathEntry *entry)
+{
+    g_signal_emit_by_name(entry, "activate", 0);
 }
