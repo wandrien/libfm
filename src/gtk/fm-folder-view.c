@@ -76,6 +76,8 @@ static void on_thumbnail_size_changed(FmConfig* cfg, FmFolderView* fv);
 
 static void cancel_pending_row_activated(FmFolderView* fv);
 
+static void adjust_hints(FmFolderView* fv);
+
 static void fm_folder_view_class_init(FmFolderViewClass *klass)
 {
     GObjectClass *g_object_class;
@@ -309,11 +311,6 @@ static void fm_folder_view_finalize(GObject *object)
     g_object_unref(self->dnd_src);
     g_object_unref(self->dnd_dest);
 
-    if (self->hinted_column_render)
-    {
-        g_object_unref(G_OBJECT(self->hinted_column_render));
-    }
-
     if (self->title_render)
     {
         g_object_unref(G_OBJECT(self->title_render));
@@ -336,6 +333,8 @@ static void fm_folder_view_finalize(GObject *object)
 
 static void set_icon_size(FmFolderView* fv, guint icon_size)
 {
+    adjust_hints(fv);
+
     FmCellRendererPixbuf* render = (FmCellRendererPixbuf*)fv->renderer_pixbuf;
     if (fv->mode != FM_FV_THUMBNAIL_VIEW)
         fm_cell_renderer_pixbuf_set_fixed_size(render, icon_size, icon_size);
@@ -498,14 +497,26 @@ static void on_drag_leave(GtkWidget *dest_widget,
 }
 
 
-static inline void adjust_hinted_column_renderer(GtkCellLayout* view, GtkCellRenderer* render, FmFolderViewHintType hint, int by)
+static void adjust_hints(FmFolderView* fv)
 {
-    if (!render || !view)
+    if (!fv->title_render || !fv->view)
         return;
+
+    FmFolderViewHintType hint = fv->hint;
+
+    if (fv->mode == FM_FV_ICON_VIEW)
+    {
+        if (fm_config->big_icon_size < 72)
+            hint = FM_FV_HINT_NONE;
+    }
+    else if (fv->mode != FM_FV_COMPACT_VIEW && fv->mode != FM_FV_VERTICAL_COMPACT_VIEW)
+    {
+        return;
+    }
 
     if (hint == FM_FV_HINT_AUTO)
     {
-        switch (by)
+        switch (fv->sort_by)
         {
             case COL_FILE_NAME: hint = FM_FV_HINT_SIZE; break;
             case COL_FILE_MTIME: hint = FM_FV_HINT_MTIME; break;
@@ -525,15 +536,15 @@ static inline void adjust_hinted_column_renderer(GtkCellLayout* view, GtkCellRen
         case FM_FV_HINT_DESC: col = COL_FILE_NAME_HINT_DESC; break;
     }
 
-    gtk_cell_layout_clear_attributes(view, render);
+    gtk_cell_layout_clear_attributes(GTK_CELL_LAYOUT(fv->view), fv->title_render);
 
     if (col == COL_FILE_NAME)
     {
-        gtk_cell_layout_add_attribute(view, render, "text", col);
+        gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), fv->title_render, "text", col);
     }
     else
     {
-        gtk_cell_layout_add_attribute(view, render, "markup", col );
+        gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), fv->title_render, "markup", col);
     }
 }
 
@@ -545,6 +556,12 @@ static inline void create_icon_view(FmFolderView* fv, GList* sels)
     GtkCellRenderer* render;
     FmFolderModel* model = (FmFolderModel*)fv->model;
     int icon_size = 0;
+
+    if (fv->title_render)
+    {
+        g_object_unref(G_OBJECT(fv->title_render));
+        fv->title_render = NULL;
+    }
 
     fv->view = exo_icon_view_new();
 
@@ -564,16 +581,8 @@ static inline void create_icon_view(FmFolderView* fv, GList* sels)
         if(model)
             fm_folder_model_set_icon_size(model, icon_size);
 
-        if (fv->hinted_column_render)
-        {
-            g_object_unref(G_OBJECT(fv->hinted_column_render));
-            fv->hinted_column_render = NULL;
-        }
-
-        fv->hinted_column_render = render = fm_cell_renderer_text_new();
-        //fv->hinted_column_render = render = gtk_cell_renderer_text_new();
-
-        g_object_ref(G_OBJECT(fv->hinted_column_render));
+        fv->title_render = render = fm_cell_renderer_text_new();
+        g_object_ref(G_OBJECT(fv->title_render));
 
         g_object_set((GObject*)render,
                      "xalign", 1.0, /* FIXME: why this needs to be 1.0? */
@@ -582,7 +591,7 @@ static inline void create_icon_view(FmFolderView* fv, GList* sels)
 
         gtk_cell_layout_pack_start((GtkCellLayout*)fv->view, render, TRUE);
         
-        adjust_hinted_column_renderer((GtkCellLayout*)fv->view, render, fv->hint, fv->sort_by);
+        adjust_hints(fv);
 
         exo_icon_view_set_layout_mode( (ExoIconView*)fv->view,
             fv->mode == FM_FV_VERTICAL_COMPACT_VIEW ? EXO_ICON_VIEW_LAYOUT_ROWS : EXO_ICON_VIEW_LAYOUT_COLS);
@@ -591,12 +600,6 @@ static inline void create_icon_view(FmFolderView* fv, GList* sels)
     }
     else /* big icon view or thumbnail view */
     {
-        if (fv->title_render)
-        {
-            g_object_unref(G_OBJECT(fv->title_render));
-            fv->title_render = NULL;
-        }
-
         if(fv->mode == FM_FV_ICON_VIEW)
         {
             fv->title_render = render = fm_cell_renderer_text_new();
@@ -615,7 +618,8 @@ static inline void create_icon_view(FmFolderView* fv, GList* sels)
             set_icon_size(fv, icon_size);
 
             gtk_cell_layout_pack_start((GtkCellLayout*)fv->view, render, TRUE);
-            gtk_cell_layout_add_attribute((GtkCellLayout*)fv->view, render, "text", COL_FILE_NAME );
+
+            adjust_hints(fv);
 
             exo_icon_view_set_column_spacing( (ExoIconView*)fv->view, 4 );
             //exo_icon_view_set_item_width ( (ExoIconView*)fv->view, 110 );
@@ -742,18 +746,6 @@ void fm_folder_view_set_mode(FmFolderView* fv, FmFolderViewMode mode)
         FmFolderModel* model = (FmFolderModel*)fv->model;
         gboolean has_focus;
 
-        if (fv->hinted_column_render)
-        {
-            g_object_unref(G_OBJECT(fv->hinted_column_render));
-            fv->hinted_column_render = NULL;
-        }
-
-        if (fv->title_render)
-        {
-            g_object_unref(G_OBJECT(fv->title_render));
-            fv->title_render = NULL;
-        }
-
         if( G_LIKELY(fv->view) )
         {
             has_focus = GTK_WIDGET_HAS_FOCUS(fv->view);
@@ -840,7 +832,7 @@ void fm_folder_view_set_hint_type(FmFolderView* fv, FmFolderViewHintType hint)
     if( hint != fv->hint )
     {
         fv->hint = hint;
-        adjust_hinted_column_renderer((GtkCellLayout*)fv->view, fv->hinted_column_render, fv->hint, fv->sort_by);
+        adjust_hints(fv);
     }
 }
 
@@ -888,7 +880,7 @@ void fm_folder_view_sort(FmFolderView* fv, GtkSortType type, int by)
         gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(fv->model),
                                              fv->sort_by, fv->sort_type);
     if (fv->hint == FM_FV_HINT_AUTO)
-        adjust_hinted_column_renderer((GtkCellLayout*)fv->view, fv->hinted_column_render, fv->hint, fv->sort_by);
+        adjust_hints(fv);
 }
 
 GtkSortType fm_folder_view_get_sort_type(FmFolderView* fv)

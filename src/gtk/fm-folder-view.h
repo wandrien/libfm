@@ -108,7 +108,6 @@ struct _FmFolderView
     GtkTreeRowReference* activated_row_ref; /* for row-activated handler */
     guint row_activated_idle;
 
-    GtkCellRenderer* hinted_column_render;
     GtkCellRenderer* title_render;
 };
 
