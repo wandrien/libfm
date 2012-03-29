@@ -598,7 +598,8 @@ GtkWidget* place_item_get_menu(FmPlacesView* view, FmPlaceItem* item)
         if(item->bm_item)
         {
             g_object_unref(ui);
-            FmFileMenu* file_menu = fm_file_menu_new_for_file(view, item->fi, NULL, TRUE);
+            FmFileMenu* file_menu = fm_file_menu_new_for_file_with_flags(view, item->fi, NULL, TRUE,
+                FM_FILE_MENU_NO_RENAME | FM_FILE_MENU_NO_DELETE | FM_FILE_MENU_NO_CUT);
             fm_file_menu_set_folder_func(file_menu, on_item_open, view);
             ui = fm_file_menu_get_ui(file_menu);
 

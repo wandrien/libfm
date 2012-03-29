@@ -120,14 +120,24 @@ void fm_file_menu_destroy(FmFileMenu* menu)
     g_slice_free(FmFileMenu, menu);
 }
 
-FmFileMenu* fm_file_menu_new_for_file(GtkWindow* parent, FmFileInfo* fi, FmPath* cwd, gboolean auto_destroy)
+FmFileMenu* fm_file_menu_new_for_file_with_flags(GtkWindow* parent, FmFileInfo* fi, FmPath* cwd, gboolean auto_destroy, int flags)
 {
     FmFileMenu* menu;
     FmFileInfoList* files = fm_file_info_list_new();
     fm_list_push_tail(files, fi);
-    menu = fm_file_menu_new_for_files(parent, files, cwd, auto_destroy);
+    menu = fm_file_menu_new_for_files_with_flags(parent, files, cwd, auto_destroy, flags);
     fm_list_unref(files);
     return menu;
+}
+
+FmFileMenu* fm_file_menu_new_for_file(GtkWindow* parent, FmFileInfo* fi, FmPath* cwd, gboolean auto_destroy)
+{
+    return fm_file_menu_new_for_file_with_flags(parent, fi, cwd, auto_destroy, 0);
+}
+
+FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files, FmPath* cwd, gboolean auto_destroy)
+{
+    return fm_file_menu_new_for_files_with_flags(parent, files, cwd, auto_destroy, 0);
 }
 
 static void on_custom_action(GtkAction* act, FmFileMenu* data)
@@ -219,7 +229,7 @@ static void fm_file_menu_add_custom_actions(FmFileMenu* data, GString* xml, FmFi
 	g_list_free(items);
 }
 
-FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files, FmPath* cwd, gboolean auto_destroy)
+FmFileMenu* fm_file_menu_new_for_files_with_flags(GtkWindow* parent, FmFileInfoList* files, FmPath* cwd, gboolean auto_destroy, int flags)
 {
     GtkWidget* menu;
     GtkUIManager* ui;
@@ -391,15 +401,39 @@ FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files,
     }
     g_string_append(xml, "</placeholder></popup>");
 
-    if (items_num != 1 || !fm_file_info_is_dir(fm_list_peek_head(files)))
+    if (flags & FM_FILE_MENU_NO_PASTE || items_num != 1 || !fm_file_info_is_dir(fm_list_peek_head(files)))
     {
         act = gtk_ui_manager_get_action(ui, "/popup/Paste");
         gtk_action_set_visible(act, FALSE);
     }
 
-    if (items_num != 1)
+    if (flags & FM_FILE_MENU_NO_RENAME || items_num != 1)
     {
         act = gtk_ui_manager_get_action(ui, "/popup/Rename");
+        gtk_action_set_visible(act, FALSE);
+    }
+
+    if (flags & FM_FILE_MENU_NO_DELETE)
+    {
+        act = gtk_ui_manager_get_action(ui, "/popup/Del");
+        gtk_action_set_visible(act, FALSE);
+    }
+
+    if (flags & FM_FILE_MENU_NO_CUT)
+    {
+        act = gtk_ui_manager_get_action(ui, "/popup/Cut");
+        gtk_action_set_visible(act, FALSE);
+    }
+
+    if (flags & FM_FILE_MENU_NO_COPY)
+    {
+        act = gtk_ui_manager_get_action(ui, "/popup/Copy");
+        gtk_action_set_visible(act, FALSE);
+    }
+
+    if (flags & FM_FILE_MENU_NO_PROPERTIES)
+    {
+        act = gtk_ui_manager_get_action(ui, "/popup/Prop");
         gtk_action_set_visible(act, FALSE);
     }
 

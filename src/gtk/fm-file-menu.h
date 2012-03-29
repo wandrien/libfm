@@ -48,6 +48,19 @@ struct _FmFileMenu
     FmPath* cwd;
 };
 
+enum _FmFileMenuFlags
+{
+    FM_FILE_MENU_NO_RENAME     = 1 << 0,
+    FM_FILE_MENU_NO_DELETE     = 1 << 1,
+    FM_FILE_MENU_NO_CUT        = 1 << 2,
+    FM_FILE_MENU_NO_COPY       = 1 << 3,
+    FM_FILE_MENU_NO_PASTE      = 1 << 4,
+    FM_FILE_MENU_NO_PROPERTIES = 1 << 5
+};
+
+FmFileMenu* fm_file_menu_new_for_file_with_flags(GtkWindow* parent, FmFileInfo* fi, FmPath* cwd, gboolean auto_destroy, int flags);
+FmFileMenu* fm_file_menu_new_for_files_with_flags(GtkWindow* parent, FmFileInfoList* files, FmPath* cwd, gboolean auto_destroy, int flags);
+
 FmFileMenu* fm_file_menu_new_for_file(GtkWindow* parent, FmFileInfo* fi, FmPath* cwd, gboolean auto_destroy);
 FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files, FmPath* cwd, gboolean auto_destroy);
 void fm_file_menu_destroy(FmFileMenu* menu);
