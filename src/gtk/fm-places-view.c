@@ -569,7 +569,22 @@ gboolean on_button_release(GtkWidget* widget, GdkEventButton* evt)
     return GTK_WIDGET_CLASS(fm_places_view_parent_class)->button_release_event(widget, evt);
 }
 
-GtkWidget* place_item_get_menu(FmPlaceItem* item)
+gboolean on_item_open(GAppLaunchContext* ctx, GList* folder_infos, FmPlacesView* view, GError** err)
+{
+     FmFileInfo* fi = (FmFileInfo*)folder_infos->data;
+     if (fi)
+     {
+         FmPath* path = fm_path_ref(fi->path);
+         if (path)
+         {
+             g_signal_emit(view, signals[CHDIR], 0, 0, path);
+             fm_path_unref(path);
+         }
+     }
+     return TRUE;
+}
+
+GtkWidget* place_item_get_menu(FmPlacesView* view, FmPlaceItem* item)
 {
     GtkWidget* menu = NULL;
     FmFileMenu* file_menu;
@@ -582,6 +597,11 @@ GtkWidget* place_item_get_menu(FmPlaceItem* item)
     {
         if(item->bm_item)
         {
+            g_object_unref(ui);
+            FmFileMenu* file_menu = fm_file_menu_new_for_file(view, item->fi, NULL, TRUE);
+            fm_file_menu_set_folder_func(file_menu, on_item_open, view);
+            ui = fm_file_menu_get_ui(file_menu);
+
             gtk_action_group_add_actions(act_grp, bm_menu_actions, G_N_ELEMENTS(bm_menu_actions), item);
             gtk_ui_manager_add_ui_from_string(ui, bookmark_menu_xml, -1, NULL);
         }
@@ -662,7 +682,7 @@ gboolean on_button_press(GtkWidget* widget, GdkEventButton* evt)
                     FmPlaceItem* item;
                     GtkWidget* menu;
                     gtk_tree_model_get(GTK_TREE_MODEL(model), &it, FM_PLACES_MODEL_COL_INFO, &item, -1);
-                    menu = place_item_get_menu(item);
+                    menu = place_item_get_menu(view, item);
                     if(menu)
                     {
                         gtk_menu_attach_to_widget(GTK_MENU(menu), widget, NULL);
